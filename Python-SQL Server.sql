@@ -296,6 +296,53 @@ EXEC [RunningPredictionWithValesPy]
 -- Visualizing with Python in SSRS
 ----------------------------------------------
 
+CREATE OR ALTER PROCEDURE [dbo].[VisualizeWithPyR2] 
+(
+	@inputVariable VARCHAR(100)
+)
+AS
+BEGIN
+
+DECLARE @q NVARCHAR(MAX) = N'SELECT '+CAST(@inputVariable AS VARCHAR(50))+' AS val1  FROM vTargetMail'
+
+-- Store the new values for prediction in temp table
+DROP TABLE IF EXISTS #t
+CREATE TABLE #t (val1 FLOAT)
+INSERT INTO #t (val1)
+EXEC sp_executesql @q
+
+EXEC sp_execute_external_script
+   @language = N'Python'
+  ,@script = N'
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(12, 5))
+plt.plot(plotdataset)
+fig.savefig(''C:\\\PyGraphs\\firstGraph.png'') 
+OutputDataSet = pd.DataFrame(data =[1], columns = ["plot"])
+'  
+,@input_data_1 = N'SELECT * FROM #t'
+,@input_data_1_name = N'plotdataset'
+WITH RESULT SETS 
+((
+plot INT
+));
+
+END
+GO
 
 
+EXEC [dbo].[VisualizeWithPyR2] 
+	@inputVariable = 'age' --CommuteDistance | --NofCars
 
+
+--  Get Column List
+SELECT 
+	column_name 
+FROM information_schema.columns
+WHERE
+	table_name = 'vTargetMail'
+ORDER By Ordinal_position	

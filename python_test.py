@@ -69,14 +69,48 @@ trained_model = pickle.dumps(linRegObj)
 mod = pickle.loads(trained_model)
 
 ##Create numpy Array when you introducte more values at the same time (bulk prediction)
-probArray = mod.predict(X)
-probList = []
+predArray = mod.predict(X_test)
 
 ## Store results
 ## In-database version with SQL Server, only one row will be returned
-Out = pd.DataFrame(data = probArray, columns = ["predictions"])
+Out = pd.DataFrame(data = predArray, columns = ["predictions"])
 
 
+## Visualizing R2
+from sklearn.metrics import r2_score
+import matplotlib
+import matplotlib.pyplot as plt
 
+def R2EvalMod(test_sizeIN):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_sizeIN)
+    SKL_lr = LinearRegression()
+    linRegObj = SKL_lr.fit(X_train, y_train)
+    predArray = linRegObj.predict(X_test)
+    R2 = r2_score(y_test, predArray) 
+    return R2
 
+R2EvalMod(0.3)
 
+sql_conn = pyodbc.connect('DRIVER={ODBC Driver 13 for SQL Server};SERVER=TOMAZK\\MSSQLSERVER2017;DATABASE=SQLPY;Trusted_Connection=yes') 
+query3 = '''
+SELECT trainSize FROM [dbo].[PredictingWithPy_models]
+'''
+df3 = pd.read_sql(query3, sql_conn)
+
+R2List = []
+for i in range(len(df3)):
+    z = df3.at[i, 'trainSize']
+    R2=R2EvalMod(z)
+    R2List.append(([z],[R2]))
+    
+R2List
+labels = ['trainsize', 'R2']
+df33 = pd.DataFrame.from_records(R2List, columns=labels)   
+plt.plot(df33)
+ 
+sql_conn = pyodbc.connect('DRIVER={ODBC Driver 13 for SQL Server};SERVER=TOMAZK\\MSSQLSERVER2017;DATABASE=SQLPY;Trusted_Connection=yes') 
+query4 = '''
+ SELECT age FROM vTargetMail'''
+df4 = pd.read_sql(query4, sql_conn)
+
+plt.plot(df4)
